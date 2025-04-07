@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QMainWindow, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLayout, QLabel, QTextEdit, QListWidget
-from PySide6.QtCore import Qt
-from src.app.backend.util import config
+from PySide6.QtCore import Qt, QEvent
+from src.app.backend.util import config, util
 
 
 class BaseWindow(QMainWindow):
@@ -48,13 +48,21 @@ class BaseWindow(QMainWindow):
         layout.addWidget(button)
         return button
 
+    def update_button_states(self, state: str) -> None:
+        button_states: dict[str, bool] = config.BUTTON_STATES.get(state, config.BUTTON_STATES["default"])
+        for button_name, enabled in button_states.items():
+            button = self.findChild(QPushButton, button_name)
+            if button:
+                button.setEnabled(enabled)
+
 
 class MainWindow(BaseWindow):
     def __init__(self) -> None:
         super().__init__(config.DEFAULT_WINDOW_SIZE, config.PROGRAM_NAME)
+        self.flash_drives: list[dict[str, str]] = []
 
-        self.generator_window = GeneratorWindow(self)
-        self.security_window = SecurityWindow(self)
+        self.generator_window = GeneratorWindow(self, self.flash_drives)
+        self.security_window = SecurityWindow(self, self.flash_drives)
 
         self.add_label(config.MAIN_WINDOW_LABEL, "title", Qt.AlignmentFlag.AlignCenter, self.window_layout)
 
@@ -66,11 +74,34 @@ class MainWindow(BaseWindow):
         self.add_message_display("message_display", self.window_layout)
         self.add_label(config.AUTHORS, "footer", Qt.AlignmentFlag.AlignCenter, self.window_layout)
 
+    def eventFilter(self, obj, event) -> bool:
+        message_display = self.findChild(QTextEdit, "message_display")
+        if event.type() == QEvent.Type.Enter and obj.objectName() in config.BUTTONS:
+            self.flash_drives = util.get_flash_drive_info()
+            if self.flash_drives:
+                message_display.setText("✅ Connected flash drives:")
+                flash_drive_info: str = "\n".join([f"Device: {drive['deviceName']}\n\tPath: {drive['devicePath']}\n" for drive in self.flash_drives])
+                message_display.append(flash_drive_info)
+                self.update_button_states("connected")
+            else:
+                message_display.setText(config.DEFAULT_MESSAGE)
+                self.update_button_states("default")
+        elif event.type() == QEvent.Type.Leave and obj.objectName() in config.BUTTONS:
+            message_display.clear()
+        elif event.type() == QEvent.Type.MouseButtonPress and obj.objectName() in config.BUTTONS:
+            self.flash_drives = util.get_flash_drive_info()
+            if not self.flash_drives:
+                self.update_button_states("default")
+                message_display.setText(config.DEFAULT_MESSAGE)
+                return True
+        return super().eventFilter(obj, event)
+
 
 class GeneratorWindow(BaseWindow):
-    def __init__(self, main_window: MainWindow) -> None:
+    def __init__(self, main_window: MainWindow, flash_drives: list[dict[str, str]]) -> None:
         super().__init__(config.DEFAULT_WINDOW_SIZE, config.PROGRAM_NAME)
         self.main_window = main_window
+        self.flash_drives: list[dict[str, str]] = flash_drives
 
         self.add_label(config.GENERATOR_WINDOW_LABEL, "title", Qt.AlignmentFlag.AlignCenter, self.window_layout)
 
@@ -85,9 +116,10 @@ class GeneratorWindow(BaseWindow):
 
 
 class SecurityWindow(BaseWindow):
-    def __init__(self, main_window: MainWindow) -> None:
+    def __init__(self, main_window: MainWindow, flash_drives: list[dict[str, str]]) -> None:
         super().__init__(config.LARGE_WINDOW_SIZE, config.PROGRAM_NAME)
         self.main_window = main_window
+        self.flash_drives: list[dict[str, str]] = flash_drives
 
         self.add_label(config.SECURITY_WINDOW_LABEL, "title", Qt.AlignmentFlag.AlignCenter, self.window_layout)
 
