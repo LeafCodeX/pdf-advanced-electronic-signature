@@ -1,6 +1,7 @@
-from PySide6.QtWidgets import QMainWindow, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLayout, QLabel, QTextEdit, QListWidget, QListWidgetItem
+from PySide6.QtWidgets import (QMainWindow, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLayout, QLabel, QTextEdit, QListWidget, QListWidgetItem,
+                               QInputDialog, QLineEdit)
 from PySide6.QtCore import Qt, QEvent
-from src.app.backend.util import config, util, keygen
+from src.app.backend.util import config, util, keygen, security
 from typing import Optional
 import os
 
@@ -229,8 +230,8 @@ class SecurityWindow(BaseWindow):
         self.sec_usb_list_widget = self.add_list_widget("sec_usb_list_widget", QListWidget.SelectionMode.SingleSelection, self.security_layout_left)
         self.sec_usb_list_widget.itemSelectionChanged.connect(self.on_usb_selection_changed)
         self.security_layout_left_col = QHBoxLayout()
-        self.add_window_button("🔒 Encrypt Key", "encrypt_key_button", self.main_window, self.security_layout_left_col)
-        self.add_window_button("🔐 Decrypt Key", "decrypt_key_button", self.main_window, self.security_layout_left_col)
+        self.add_function_button("🔒 Encrypt Key", "encrypt_key_button", self.handle_encrypt_and_decrypt_private_key, self.security_layout_left_col)
+        self.add_function_button("🔐 Decrypt Key", "decrypt_key_button", self.handle_encrypt_and_decrypt_private_key, self.security_layout_left_col)
         self.security_layout_left.addLayout(self.security_layout_left_col)
         self.add_window_button("📑 Select PDF", "select_pdf_button", self.main_window, self.security_layout_left)
         self.add_window_button("✎ᝰ. Sign PDF", "sign_button", self.main_window, self.security_layout_left)
@@ -361,3 +362,30 @@ class SecurityWindow(BaseWindow):
                     self.update_button_states("-private-key")
             elif key_name in config.PUBLIC_KEY_FILES:
                 self.update_button_states("-public-key")
+
+    def handle_encrypt_and_decrypt_private_key(self):
+        sender = self.sender()
+        action = "encrypt" if sender.objectName() == "encrypt_key_button" else "decrypt"
+        pin, input_window = QInputDialog.getText(self, config.PROGRAM_NAME, "Enter code (PIN):", QLineEdit.EchoMode.Password)
+        if input_window and pin:
+            selected_items = self.sec_key_list_widget.selectedItems()
+            if selected_items:
+                selected_key_path = selected_items[0].data(Qt.ItemDataRole.UserRole)
+                if action == "encrypt":
+                    encrypted_key_path = security.encrypt_private_key(selected_key_path, pin)
+                    if encrypted_key_path:
+                        self.message_display.setText(f"✅ Private key encrypted successfully! Encrypted key path:\n{encrypted_key_path}")
+                    else:
+                        self.message_display.setText("❌ Failed to encrypt private key!")
+                else:
+                    decrypted_key_path = security.decrypt_private_key(selected_key_path, pin)
+                    if decrypted_key_path:
+                        self.message_display.setText(f"✅ Private key decrypted successfully! Decrypted key path:\n{decrypted_key_path}")
+                    else:
+                        self.message_display.setText("❌ Failed to decrypt private key!\nPlease check the PIN and try again...")
+                self.load_keys(self.selected_drive["devicePath"])
+                self.update_button_states("connected")
+            else:
+                self.message_display.setText("❌ No key selected for encryption/decryption!\nPlease select a key from the list and try again...")
+        else:
+            self.message_display.setText("❌ Failed encrypting/decrypting the key!\nPlease enter a PIN and try again...")

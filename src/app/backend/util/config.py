@@ -3,6 +3,7 @@ AUTHORS: str = "Authors: Marcin Bajkowski 193696, Stanisław Lemański 193333"
 PROGRAM_NAME: str = "PAdES v1.0.0-beta"
 
 RSA_KEY_LENGTH: int = 4096
+BLOCK_SIZE: int = 16
 
 DEFAULT_WINDOW_SIZE: tuple[int, int] = (800, 600)
 LARGE_WINDOW_SIZE: tuple[int, int] = (1200, 800)
