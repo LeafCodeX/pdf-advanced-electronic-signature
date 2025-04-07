@@ -1,12 +1,16 @@
+from pathlib import Path
+
 AUTHORS: str = "Authors: Marcin Bajkowski 193696, Stanisław Lemański 193333"
 
-PROGRAM_NAME: str = "PAdES v1.0.0-beta"
+PROGRAM_NAME: str = "PAdES v1.0.0"
 
 RSA_KEY_LENGTH: int = 4096
 BLOCK_SIZE: int = 16
 
 DEFAULT_WINDOW_SIZE: tuple[int, int] = (800, 600)
 LARGE_WINDOW_SIZE: tuple[int, int] = (1200, 800)
+
+DEFAULT_STYLESHEET_PATH = Path(__file__).resolve().parents[4] / "src/app/frontend/styles.qss"
 
 MAIN_WINDOW_LABEL: str = "BSK Project: PAdES Qualified Electronic Signature"
 GENERATOR_WINDOW_LABEL: str = "Generate RSA Keys (Public and Private)"

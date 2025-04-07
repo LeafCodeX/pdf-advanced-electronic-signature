@@ -1,0 +1,155 @@
+QMainWindow {
+    background-color: rgb(28, 28, 30);
+}
+
+QLabel {
+    color: rgb(142, 142, 147);
+    font-weight: bold;
+    text-align: center;
+}
+
+QLabel#title {
+    font-size: 24px;
+}
+
+MainWindow QLabel#title, GeneratorWindow QLabel#title {
+    font-size: 24px;
+    margin-top: 40px;
+}
+
+SecurityWindow QLabel#title {
+    margin-top: 10px;
+}
+
+QLabel#footer {
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+MainWindow QLabel#footer, GeneratorWindow QLabel#footer {
+    margin-bottom: 10px;
+}
+
+QPushButton {
+    background-color: rgb(58, 58, 60);
+    color: rgb(142, 142, 147);
+    border-radius: 16px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+MainWindow QPushButton {
+    padding: 60px 60px;
+    margin-top: 40px;
+}
+
+GeneratorWindow QPushButton {
+    padding: 30px 60px 30px 60px;
+    margin-top: 20px;
+}
+
+SecurityWindow QPushButton {
+    padding: 30px 60px 30px 60px;
+    margin-top: 20px;
+}
+
+QPushButton#decrypt_key_button {
+    padding: 30px 30px 30px 30px;
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+QPushButton#encrypt_key_button {
+    padding: 30px 30px 30px 30px;
+    margin-left: 60px;
+    margin-right: 10px;
+}
+
+QPushButton#security_button, QPushButton#gen_return_button, QPushButton#select_pdf_verify_button, QPushButton#verify_button, QPushButton#sec_return_button {
+    margin-right: 60px;
+    margin-left: 10px;
+}
+
+QPushButton#keygen_button, QPushButton#generate_button, QPushButton#select_pdf_button, QPushButton#sign_button {
+    margin-left: 60px;
+    margin-right: 10px;
+}
+
+QPushButton:hover {
+    background-color: rgb(72, 72, 74);
+}
+
+QPushButton:disabled {
+    background-color: rgb(44, 44, 46);
+}
+
+QTextEdit {
+    background-color: rgb(58, 58, 60);
+    color: rgb(142, 142, 147);
+    border-radius: 16px;
+    padding: 15px 15px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+MainWindow QTextEdit {
+    margin: 20px 60px 60px;
+}
+
+GeneratorWindow QTextEdit {
+    max-height: 140px;
+    margin: 20px 60px 10px 60px;
+}
+
+SecurityWindow QTextEdit {
+    min-height: 130px;
+    max-height: 130px;
+    margin: 20px 60px 10px 60px;
+}
+
+QListWidget {
+    background-color: rgb(58, 58, 60);
+    color: rgb(142, 142, 147);
+    border-radius: 16px;
+    padding: 8px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+GeneratorWindow QListWidget {
+    margin: 20px 60px 0 60px;
+    max-height: 120px;
+}
+
+SecurityWindow QListWidget {
+    max-height: 140px;
+}
+
+QListWidget#sec_usb_list_widget {
+    margin: 20px 10px 0 60px;
+}
+
+QListWidget#sec_key_list_widget {
+    margin: 20px 60px 0 10px;
+}
+
+QListWidget::item {
+    background-color: rgb(58, 58, 60);
+    padding: 4px;
+    margin: 4px;
+    border-radius: 8px;
+}
+
+QListWidget::item:selected {
+    background-color: rgb(72, 72, 74);
+    color: rgb(142, 142, 147);
+}
+
+QListWidget::item:disabled {
+    background-color: rgb(44, 44, 46);
+    color: rgb(142, 142, 147);
+}
+
+QInputDialog {
+    background-color: rgb(28, 28, 30);
+}

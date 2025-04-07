@@ -3,20 +3,23 @@ from PySide6.QtWidgets import (QMainWindow, QPushButton, QWidget, QVBoxLayout, Q
 from PySide6.QtCore import Qt, QEvent
 from src.app.backend.util import config, util, keygen, security
 from typing import Optional
+from icecream import ic
 import os
 
 
 class BaseWindow(QMainWindow):
-    def __init__(self, window_size: tuple[int, int], title: str) -> None:
+    def __init__(self, window_size: tuple[int, int], title: str, stylesheet_path: str) -> None:
         super().__init__()
         self.resize(window_size[0], window_size[1])
         self.setWindowTitle(title)
+        self.stylesheet_path = stylesheet_path
 
         self.window_widget = QWidget()
         self.window_layout = QVBoxLayout()
 
         self.window_widget.setLayout(self.window_layout)
         self.setCentralWidget(self.window_widget)
+        self.load_stylesheet(self.stylesheet_path)
 
     @staticmethod
     def add_label(text: str, identification_name: str, alignment: Qt.AlignmentFlag, layout: QLayout) -> QLabel:
@@ -66,10 +69,17 @@ class BaseWindow(QMainWindow):
             if button:
                 button.setEnabled(enabled)
 
+    def load_stylesheet(self, stylesheet_path: str) -> None:
+        try:
+            with open(stylesheet_path, "r") as file:
+                self.setStyleSheet(file.read())
+        except Exception as ex:
+            ic(f"{ex}")
+
 
 class MainWindow(BaseWindow):
     def __init__(self) -> None:
-        super().__init__(config.DEFAULT_WINDOW_SIZE, config.PROGRAM_NAME)
+        super().__init__(config.DEFAULT_WINDOW_SIZE, config.PROGRAM_NAME, config.DEFAULT_STYLESHEET_PATH)
         self.flash_drives: list[dict[str, str]] = []
 
         self.generator_window = GeneratorWindow(self, self.flash_drives)
@@ -110,9 +120,8 @@ class MainWindow(BaseWindow):
 
 class GeneratorWindow(BaseWindow):
     def __init__(self, main_window: MainWindow, flash_drives: list[dict[str, str]]) -> None:
-        super().__init__(config.DEFAULT_WINDOW_SIZE, config.PROGRAM_NAME)
+        super().__init__(config.DEFAULT_WINDOW_SIZE, config.PROGRAM_NAME, config.DEFAULT_STYLESHEET_PATH)
         self.main_window = main_window
-        self.flash_drives: list[dict[str, str]] = flash_drives
         self.flash_drives: list[dict[str, str]] = flash_drives
         self.previous_flash_drives: list[dict[str, str]] = []
         self.selected_drive: Optional[dict[str, str]] = None
@@ -216,7 +225,7 @@ class GeneratorWindow(BaseWindow):
 
 class SecurityWindow(BaseWindow):
     def __init__(self, main_window: MainWindow, flash_drives: list[dict[str, str]]) -> None:
-        super().__init__(config.LARGE_WINDOW_SIZE, config.PROGRAM_NAME)
+        super().__init__(config.LARGE_WINDOW_SIZE, config.PROGRAM_NAME, config.DEFAULT_STYLESHEET_PATH)
         self.main_window = main_window
         self.flash_drives: list[dict[str, str]] = flash_drives
         self.previous_flash_drives: list[dict[str, str]] = []
