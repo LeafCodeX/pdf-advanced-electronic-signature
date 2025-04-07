@@ -18,6 +18,30 @@ BUTTONS: list = ["keygen_button", "security_button", "generate_button", "encrypt
                  "select_pdf_verify_button", "verify_button"]
 
 BUTTON_STATES: dict[str, dict[str, bool]] = {
+    "-encrypted-private-key": {
+        "encrypt_key_button": False,
+        "decrypt_key_button": True,
+        "select_pdf_button": False,
+        "sign_button": False,
+        "select_pdf_verify_button": False,
+        "verify_button": False,
+    },
+    "-private-key": {
+        "encrypt_key_button": True,
+        "decrypt_key_button": False,
+        "select_pdf_button": True,
+        "sign_button": True,
+        "select_pdf_verify_button": False,
+        "verify_button": False,
+    },
+    "-public-key": {
+        "encrypt_key_button": False,
+        "decrypt_key_button": False,
+        "select_pdf_button": False,
+        "sign_button": False,
+        "select_pdf_verify_button": True,
+        "verify_button": True,
+    },
     "connected": {
         "keygen_button": True,
         "security_button": True,

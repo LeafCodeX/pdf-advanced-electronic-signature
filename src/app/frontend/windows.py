@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QMainWindow, QPushButton, QWidget, QVBoxLayout, QH
 from PySide6.QtCore import Qt, QEvent
 from src.app.backend.util import config, util, keygen
 from typing import Optional
+import os
 
 
 class BaseWindow(QMainWindow):
@@ -217,12 +218,16 @@ class SecurityWindow(BaseWindow):
         super().__init__(config.LARGE_WINDOW_SIZE, config.PROGRAM_NAME)
         self.main_window = main_window
         self.flash_drives: list[dict[str, str]] = flash_drives
+        self.previous_flash_drives: list[dict[str, str]] = []
+        self.selected_drive: Optional[dict[str, str]] = None
+        self.selected_key: Optional[str] = None
 
         self.add_label(config.SECURITY_WINDOW_LABEL, "title", Qt.AlignmentFlag.AlignCenter, self.window_layout)
 
         self.security_layout = QHBoxLayout()
         self.security_layout_left = QVBoxLayout()
         self.sec_usb_list_widget = self.add_list_widget("sec_usb_list_widget", QListWidget.SelectionMode.SingleSelection, self.security_layout_left)
+        self.sec_usb_list_widget.itemSelectionChanged.connect(self.on_usb_selection_changed)
         self.security_layout_left_col = QHBoxLayout()
         self.add_window_button("🔒 Encrypt Key", "encrypt_key_button", self.main_window, self.security_layout_left_col)
         self.add_window_button("🔐 Decrypt Key", "decrypt_key_button", self.main_window, self.security_layout_left_col)
@@ -233,6 +238,7 @@ class SecurityWindow(BaseWindow):
 
         self.security_layout_right = QVBoxLayout()
         self.sec_key_list_widget = self.add_list_widget("sec_key_list_widget", QListWidget.SelectionMode.SingleSelection, self.security_layout_right)
+        self.sec_key_list_widget.itemSelectionChanged.connect(self.on_key_selection_changed)
         self.add_window_button("📑 Select PDF to Verify", "select_pdf_verify_button", self.main_window, self.security_layout_right)
         self.add_window_button("☑️ Verify PDF", "verify_button", self.main_window, self.security_layout_right)
         self.add_window_button("↩ Return", "sec_return_button", self.main_window, self.security_layout_right)
@@ -241,3 +247,117 @@ class SecurityWindow(BaseWindow):
         self.window_layout.addLayout(self.security_layout)
         self.message_display = self.add_message_display("message_display", self.window_layout)
         self.add_label(config.AUTHORS, "footer", Qt.AlignmentFlag.AlignCenter, self.window_layout)
+
+    def update_usb_list(self) -> None:
+        current_flash_drives = util.get_flash_drive_info()
+        new_flash_drive_info = []
+
+        for drive in current_flash_drives:
+            device_path = drive["devicePath"]
+            private_key_count, public_key_count, _, _ = keygen.count_keys(device_path)
+            new_flash_drive_info.append({"devicePath": device_path, "deviceName": drive["deviceName"], "private_key_count": private_key_count,
+                                         "public_key_count": public_key_count})
+
+        key_state_changed = (len(new_flash_drive_info) != len(self.previous_flash_drives) or any(new != old for new, old in zip(new_flash_drive_info,
+                                                                                                                                self.previous_flash_drives)))
+
+        if not key_state_changed:
+            return
+
+        self.previous_flash_drives = new_flash_drive_info
+        self.sec_usb_list_widget.clear()
+
+        placeholder_item = QListWidgetItem("Select a flash drive:")
+        placeholder_item.setFlags(Qt.ItemFlag.NoItemFlags)
+        self.sec_usb_list_widget.addItem(placeholder_item)
+
+        for drive in new_flash_drive_info:
+            item_text = f'{drive["deviceName"]} - {drive["devicePath"]}'
+            list_item = QListWidgetItem(item_text)
+            list_item.setData(Qt.ItemDataRole.UserRole, drive)
+            if self.selected_drive and self.selected_drive["devicePath"] == drive["devicePath"]:
+                list_item.setSelected(True)
+            self.sec_usb_list_widget.addItem(list_item)
+
+    def showEvent(self, event) -> None:
+        self.flash_drives = util.get_flash_drive_info()
+        self.update_button_states("connected" if self.flash_drives else "default")
+        self.update_usb_list()
+        placeholder_item = QListWidgetItem("Select a key for next operations:")
+        placeholder_item.setFlags(Qt.ItemFlag.NoItemFlags)
+        self.sec_key_list_widget.addItem(placeholder_item)
+        super().showEvent(event)
+
+    def eventFilter(self, obj, event) -> bool:
+        message_display = self.findChild(QTextEdit, "message_display")
+        if event.type() == QEvent.Type.Enter and obj.objectName() in config.BUTTONS:
+            self.flash_drives = util.get_flash_drive_info()
+            if self.flash_drives:
+                self.update_usb_list()
+            else:
+                self.update_usb_list()
+                message_display.setText(config.DEFAULT_MESSAGE)
+                self.update_button_states("default")
+        elif event.type() == QEvent.Type.Leave and obj.objectName() in config.BUTTONS:
+            message_display.clear()
+            self.update_usb_list()
+        return super().eventFilter(obj, event)
+
+    def closeEvent(self, event) -> None:
+        self.sec_usb_list_widget.clearSelection()
+        self.flash_drives = util.get_flash_drive_info()
+        self.main_window.flash_drives = self.flash_drives
+        self.main_window.update_button_states("connected" if self.flash_drives else "default")
+        message_display = self.main_window.findChild(QTextEdit, "message_display")
+        if not self.flash_drives:
+            message_display.setText(config.DEFAULT_MESSAGE)
+        else:
+            message_display.clear()
+        self.message_display.clear()
+        self.sec_key_list_widget.clear()
+        self.selected_drive = None
+        self.selected_key = None
+        super().closeEvent(event)
+
+    def on_usb_selection_changed(self) -> None:
+        selected_item = self.sec_usb_list_widget.currentItem()
+        if selected_item and selected_item.data(Qt.ItemDataRole.UserRole):
+            self.selected_drive = selected_item.data(Qt.ItemDataRole.UserRole)
+            self.load_keys(self.selected_drive["devicePath"] if self.selected_drive else "")
+
+    def load_keys(self, device_path: str) -> None:
+        message_display = self.findChild(QTextEdit, "message_display")
+        self.sec_key_list_widget.clear()
+
+        placeholder_item = QListWidgetItem("Select a key for next operations:")
+        placeholder_item.setFlags(Qt.ItemFlag.NoItemFlags)
+        self.sec_key_list_widget.addItem(placeholder_item)
+
+        if not self.selected_drive:
+            return
+
+        private_key_count, public_key_count, private_key_paths, public_key_paths = keygen.count_keys(device_path)
+
+        if private_key_count == 0 and public_key_count == 0:
+            message_display.setText("❌ No keys found on the selected flash drive!")
+            return
+
+        for key_type, key_paths in [("Private Key", private_key_paths), ("Public Key", public_key_paths)]:
+            for path in key_paths:
+                parent_folder = os.path.basename(os.path.dirname(path))
+                item = QListWidgetItem(f"../{parent_folder}/{os.path.basename(path)}")
+                item.setData(Qt.ItemDataRole.UserRole, path)
+                self.sec_key_list_widget.addItem(item)
+
+    def on_key_selection_changed(self) -> None:
+        selected_item = self.sec_key_list_widget.currentItem()
+        if selected_item and selected_item.data(Qt.ItemDataRole.UserRole):
+            self.selected_key = selected_item.data(Qt.ItemDataRole.UserRole)
+            key_name = os.path.basename(self.selected_key)
+            if key_name in config.PRIVATE_KEY_FILES:
+                if "encrypted" in key_name:
+                    self.update_button_states("-encrypted-private-key")
+                else:
+                    self.update_button_states("-private-key")
+            elif key_name in config.PUBLIC_KEY_FILES:
+                self.update_button_states("-public-key")
