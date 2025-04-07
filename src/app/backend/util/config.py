@@ -2,6 +2,8 @@ AUTHORS: str = "Authors: Marcin Bajkowski 193696, Stanisław Lemański 193333"
 
 PROGRAM_NAME: str = "PAdES v1.0.0-beta"
 
+RSA_KEY_LENGTH: int = 4096
+
 DEFAULT_WINDOW_SIZE: tuple[int, int] = (800, 600)
 LARGE_WINDOW_SIZE: tuple[int, int] = (1200, 800)
 
@@ -38,4 +40,19 @@ BUTTON_STATES: dict[str, dict[str, bool]] = {
         "select_pdf_verify_button": False,
         "verify_button": False,
     }
+}
+
+UNWANTED_FILES: set[str] = {
+        "._SoCS-private-key.pem",
+        "._SoCS-public-key.pem",
+        "._SoCS-encrypted-private-key.pem",
+}
+
+PRIVATE_KEY_FILES: set[str] = {
+    "SoCS-private-key.pem",
+    "SoCS-encrypted-private-key.pem",
+}
+
+PUBLIC_KEY_FILES: set[str] = {
+    "SoCS-public-key.pem",
 }

@@ -1,2 +1,3 @@
 icecream
 PySide6
+cryptography

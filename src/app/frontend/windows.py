@@ -1,6 +1,7 @@
-from PySide6.QtWidgets import QMainWindow, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLayout, QLabel, QTextEdit, QListWidget
+from PySide6.QtWidgets import QMainWindow, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLayout, QLabel, QTextEdit, QListWidget, QListWidgetItem
 from PySide6.QtCore import Qt, QEvent
-from src.app.backend.util import config, util
+from src.app.backend.util import config, util, keygen
+from typing import Optional
 
 
 class BaseWindow(QMainWindow):
@@ -38,6 +39,14 @@ class BaseWindow(QMainWindow):
         list_widget.setSelectionMode(selection_mode)
         layout.addWidget(list_widget)
         return list_widget
+
+    def add_function_button(self, name: str, identification_name: str, function: callable, layout: QLayout) -> QPushButton:
+        button = QPushButton(name)
+        button.setObjectName(identification_name)
+        button.clicked.connect(function)
+        button.installEventFilter(self)
+        layout.addWidget(button)
+        return button
 
     def add_window_button(self, name: str, identification_name: str, main_window: QMainWindow, layout: QLayout) -> QPushButton:
         button = QPushButton(name)
@@ -102,17 +111,105 @@ class GeneratorWindow(BaseWindow):
         super().__init__(config.DEFAULT_WINDOW_SIZE, config.PROGRAM_NAME)
         self.main_window = main_window
         self.flash_drives: list[dict[str, str]] = flash_drives
+        self.flash_drives: list[dict[str, str]] = flash_drives
+        self.previous_flash_drives: list[dict[str, str]] = []
+        self.selected_drive: Optional[dict[str, str]] = None
 
         self.add_label(config.GENERATOR_WINDOW_LABEL, "title", Qt.AlignmentFlag.AlignCenter, self.window_layout)
 
         self.gen_usb_list_widget = self.add_list_widget("gen_usb_list_widget", QListWidget.SelectionMode.SingleSelection, self.window_layout)
+        self.gen_usb_list_widget.itemSelectionChanged.connect(self.on_usb_selection_changed)
         self.generator_button_layout = QHBoxLayout()
-        self.add_window_button("🔑 Generate Keys", "generate_button", self.main_window, self.generator_button_layout)
+        self.add_function_button("🔑 Generate Keys", "generate_button", self.generate_and_save_keys, self.generator_button_layout)
         self.add_window_button("↩ Return", "gen_return_button", self.main_window, self.generator_button_layout)
         self.window_layout.addLayout(self.generator_button_layout)
 
         self.message_display = self.add_message_display("message_display", self.window_layout)
         self.add_label(config.AUTHORS, "footer", Qt.AlignmentFlag.AlignCenter, self.window_layout)
+
+    def update_usb_list(self) -> None:
+        current_flash_drives = util.get_flash_drive_info()
+        new_flash_drive_info = []
+
+        for drive in current_flash_drives:
+            device_path = drive["devicePath"]
+            private_key_count, public_key_count, _, _ = keygen.count_keys(device_path)
+            new_flash_drive_info.append({"devicePath": device_path, "deviceName": drive["deviceName"], "private_key_count": private_key_count,
+                                         "public_key_count": public_key_count})
+
+        key_state_changed = (len(new_flash_drive_info) != len(self.previous_flash_drives) or any(new != old for new, old in zip(new_flash_drive_info,
+                                                                                                                                self.previous_flash_drives)))
+        if not key_state_changed:
+            return
+
+        self.previous_flash_drives = new_flash_drive_info
+        self.gen_usb_list_widget.clear()
+
+        placeholder_item = QListWidgetItem("Select a flash drive:")
+        placeholder_item.setFlags(Qt.ItemFlag.NoItemFlags)
+        self.gen_usb_list_widget.addItem(placeholder_item)
+
+        for drive in new_flash_drive_info:
+            item_text = f'{drive["deviceName"]} - {drive["devicePath"]}     (Keys: {drive["private_key_count"]} private, {drive["public_key_count"]} public)'
+            list_item = QListWidgetItem(item_text)
+            list_item.setData(Qt.ItemDataRole.UserRole, drive)
+            if self.selected_drive and self.selected_drive["devicePath"] == drive["devicePath"]:
+                list_item.setSelected(True)
+            self.gen_usb_list_widget.addItem(list_item)
+
+    def showEvent(self, event) -> None:
+        self.update_usb_list()
+        super().showEvent(event)
+
+    def eventFilter(self, obj, event) -> bool:
+        message_display = self.findChild(QTextEdit, "message_display")
+        if event.type() == QEvent.Type.Enter and obj.objectName() in config.BUTTONS:
+            self.flash_drives = util.get_flash_drive_info()
+            if self.flash_drives:
+                self.update_usb_list()
+                self.update_button_states("connected")
+            else:
+                self.update_usb_list()
+                message_display.setText(config.DEFAULT_MESSAGE)
+                self.update_button_states("default")
+        elif event.type() == QEvent.Type.Leave and obj.objectName() in config.BUTTONS:
+            message_display.clear()
+            self.update_usb_list()
+        return super().eventFilter(obj, event)
+
+    def closeEvent(self, event) -> None:
+        self.gen_usb_list_widget.clearSelection()
+        self.flash_drives = util.get_flash_drive_info()
+        self.main_window.flash_drives = self.flash_drives
+        self.main_window.update_button_states("connected" if self.flash_drives else "default")
+        message_display = self.main_window.findChild(QTextEdit, "message_display")
+        if not self.flash_drives:
+            message_display.setText(config.DEFAULT_MESSAGE)
+        else:
+            message_display.clear()
+        self.message_display.clear()
+        self.selected_drive = None
+        super().closeEvent(event)
+
+    def on_usb_selection_changed(self) -> None:
+        selected_item = self.gen_usb_list_widget.currentItem()
+        if selected_item and selected_item.data(Qt.ItemDataRole.UserRole):
+            self.selected_drive = selected_item.data(Qt.ItemDataRole.UserRole)
+
+    def generate_and_save_keys(self) -> None:
+        message_display = self.findChild(QTextEdit, "message_display")
+        if not self.selected_drive:
+            message_display.setText("❌ Please select a flash drive from the list!")
+            return
+        flash_drive_info = self.selected_drive
+        device_path = flash_drive_info["devicePath"]
+        device_name = flash_drive_info["deviceName"]
+        message_display.append(f"✅ Generating RSA keys with a length of {config.RSA_KEY_LENGTH} bits for {device_name}...")
+        private_key_path, public_key_path = keygen.generate_and_save_keys(device_path)
+        if private_key_path and public_key_path:
+            message_display.append(f"{private_key_path}\n{public_key_path}\n✅ Generating and saving keys completed successfully!")
+        else:
+            message_display.setText(f"{config.DEFAULT_MESSAGE}\n❌ Error generating and saving keys!")
 
 
 class SecurityWindow(BaseWindow):
