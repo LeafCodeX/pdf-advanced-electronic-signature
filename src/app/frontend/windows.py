@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (QMainWindow, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLayout, QLabel, QTextEdit, QListWidget, QListWidgetItem,
-                               QInputDialog, QLineEdit)
+                               QInputDialog, QLineEdit, QFileDialog)
 from PySide6.QtCore import Qt, QEvent
 from src.app.backend.util import config, util, keygen, security
 from typing import Optional
@@ -222,6 +222,8 @@ class SecurityWindow(BaseWindow):
         self.previous_flash_drives: list[dict[str, str]] = []
         self.selected_drive: Optional[dict[str, str]] = None
         self.selected_key: Optional[str] = None
+        self.selected_pdf_path_to_sign: Optional[str] = None
+        self.selected_pdf_path_to_verify: Optional[str] = None
 
         self.add_label(config.SECURITY_WINDOW_LABEL, "title", Qt.AlignmentFlag.AlignCenter, self.window_layout)
 
@@ -233,15 +235,15 @@ class SecurityWindow(BaseWindow):
         self.add_function_button("🔒 Encrypt Key", "encrypt_key_button", self.handle_encrypt_and_decrypt_private_key, self.security_layout_left_col)
         self.add_function_button("🔐 Decrypt Key", "decrypt_key_button", self.handle_encrypt_and_decrypt_private_key, self.security_layout_left_col)
         self.security_layout_left.addLayout(self.security_layout_left_col)
-        self.add_window_button("📑 Select PDF", "select_pdf_button", self.main_window, self.security_layout_left)
-        self.add_window_button("✎ᝰ. Sign PDF", "sign_button", self.main_window, self.security_layout_left)
+        self.add_function_button("📑 Select PDF", "select_pdf_button", self.select_pdf_to_sign, self.security_layout_left)
+        self.add_function_button("✎ᝰ. Sign PDF", "sign_button", self.sign_selected_pdf, self.security_layout_left)
         self.security_layout.addLayout(self.security_layout_left)
 
         self.security_layout_right = QVBoxLayout()
         self.sec_key_list_widget = self.add_list_widget("sec_key_list_widget", QListWidget.SelectionMode.SingleSelection, self.security_layout_right)
         self.sec_key_list_widget.itemSelectionChanged.connect(self.on_key_selection_changed)
-        self.add_window_button("📑 Select PDF to Verify", "select_pdf_verify_button", self.main_window, self.security_layout_right)
-        self.add_window_button("☑️ Verify PDF", "verify_button", self.main_window, self.security_layout_right)
+        self.add_function_button("📑 Select PDF to Verify", "select_pdf_verify_button", self.select_pdf_to_verify, self.security_layout_right)
+        self.add_function_button("☑️ Verify PDF", "verify_button", self.verify_selected_pdf, self.security_layout_right)
         self.add_window_button("↩ Return", "sec_return_button", self.main_window, self.security_layout_right)
         self.security_layout.addLayout(self.security_layout_right)
 
@@ -318,6 +320,8 @@ class SecurityWindow(BaseWindow):
         self.sec_key_list_widget.clear()
         self.selected_drive = None
         self.selected_key = None
+        self.selected_pdf_path_to_sign = None
+        self.selected_pdf_path_to_verify = None
         super().closeEvent(event)
 
     def on_usb_selection_changed(self) -> None:
@@ -389,3 +393,59 @@ class SecurityWindow(BaseWindow):
                 self.message_display.setText("❌ No key selected for encryption/decryption!\nPlease select a key from the list and try again...")
         else:
             self.message_display.setText("❌ Failed encrypting/decrypting the key!\nPlease enter a PIN and try again...")
+
+    def select_pdf_to_sign(self) -> None:
+        pdf_path, _ = QFileDialog.getOpenFileName(self, "Select PDF to Sign", "", "PDF Files (*.pdf)")
+        if pdf_path:
+            self.selected_pdf_path_to_sign = pdf_path
+            self.message_display.setText(f"✅ PDF selected for signing:\n{pdf_path}")
+        else:
+            self.message_display.setText("❌ No PDF selected for signing!\nPlease select a PDF file and try again...")
+
+    def select_pdf_to_verify(self) -> None:
+        pdf_path, _ = QFileDialog.getOpenFileName(self, "Select PDF to Verify", "", "PDF Files (*.pdf)")
+        if pdf_path:
+            self.selected_pdf_path_to_verify = pdf_path
+            self.message_display.setText(f"✅ PDF selected for verification:\n{pdf_path}")
+        else:
+            self.message_display.setText("❌ No PDF selected for verification!\nPlease select a PDF file and try again...")
+
+    def sign_selected_pdf(self) -> None:
+        if not self.selected_pdf_path_to_sign:
+            self.message_display.setText("❌ No PDF selected for signing!\nPlease select a PDF file and try again...")
+            return
+        if not self.selected_key or not self.selected_key.endswith("SoCS-private-key.pem"):
+            self.message_display.setText("❌ No private key selected for signing!\nPlease select a private key and try again...")
+            return
+        name, input_name = QInputDialog.getText(self, config.PROGRAM_NAME, "Signed by:")
+        if not input_name or not name:
+            name = " "
+        signed_pdf_path = security.sign_pdf(self.selected_pdf_path_to_sign, self.selected_key, name)
+        if signed_pdf_path and os.path.isfile(signed_pdf_path):
+            if name.strip():
+                self.message_display.setText(f"✅ PDF signed successfully by {name}! \nSigned PDF path: {signed_pdf_path}")
+            else:
+                self.message_display.setText(f"✅ PDF signed successfully! \nSigned PDF path: {signed_pdf_path}")
+        else:
+            self.message_display.setText("❌ PDF signing failed! Please check the inputs and try again.")
+
+    def verify_selected_pdf(self) -> None:
+        if not self.selected_pdf_path_to_verify:
+            self.message_display.setText("❌ No PDF selected for verification!\nPlease select a PDF file and try again...")
+            return
+
+        if not self.selected_key or not self.selected_key.endswith("SoCS-public-key.pem"):
+            self.message_display.setText("❌ No public key selected for verification!\nPlease select a public key and try again...")
+            return
+
+        result = security.verify_pdf(self.selected_pdf_path_to_verify, self.selected_key)
+
+        if isinstance(result, tuple) and len(result) == 5:
+            is_valid, signer, signature_date, signature_length, key_size = result
+            if is_valid:
+                self.message_display.setText(f"✅ PDF verification successful!\nPDF path: {self.selected_pdf_path_to_verify}\n\nSigner: {signer}\n"
+                                             f"Signature date: {signature_date}\nSignature length: {signature_length} bytes and key size: {key_size} bits!")
+            else:
+                self.message_display.setText(f"❌ PDF verification failed!\nCheck the inputs and try again...\nPDF path: {self.selected_pdf_path_to_verify}")
+        else:
+            self.message_display.setText("❌ Unexpected result from verification function! Check the inputs and try again...")

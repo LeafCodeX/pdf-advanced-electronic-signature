@@ -1,3 +1,4 @@
 icecream
 PySide6
 cryptography
+PyPDF2

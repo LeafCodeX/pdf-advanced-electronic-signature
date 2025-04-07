@@ -1,6 +1,11 @@
-from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
 from cryptography.hazmat.primitives.ciphers import Cipher, modes, algorithms
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from PyPDF2 import PdfReader, PdfWriter
 from src.app.backend.util import config
+from datetime import datetime
 from icecream import ic
 import hashlib
 import os
@@ -49,3 +54,58 @@ def decrypt_private_key(encrypted_key_path: str, pin: str) -> str:
     except Exception as ex:
         ic(f"{ex}")
         return ""
+
+
+def sign_pdf(pdf_path: str, private_key_path: str, name: str) -> str:
+    pdf_reader = PdfReader(pdf_path)
+    pdf_writer = PdfWriter()
+    for page in pdf_reader.pages:
+        pdf_writer.add_page(page)
+    pdf_content = b"".join([page.extract_text().encode() for page in pdf_reader.pages])
+    with open(private_key_path, "rb") as key_file:
+        private_key = load_pem_private_key(key_file.read(), password=None)
+    signature = private_key.sign(
+        pdf_content,
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256()
+    )
+    pdf_writer.add_metadata({
+        "/Signature": signature.hex(),
+        "/Name": name,
+        "/Date": datetime.now().isoformat()
+    })
+    signed_pdf_path = pdf_path.replace(".pdf", "-signed.pdf")
+    with open(signed_pdf_path, "wb") as signed_pdf:
+        pdf_writer.write(signed_pdf)
+    return signed_pdf_path
+
+
+def verify_pdf(pdf_path: str, public_key_path: str) -> [bool, str, str, int, int]:
+    pdf_reader = PdfReader(pdf_path)
+    pdf_content = b"".join([page.extract_text().encode() for page in pdf_reader.pages])
+    with open(public_key_path, "rb") as key_file:
+        public_key = load_pem_public_key(key_file.read())
+    signature_hex = pdf_reader.metadata.get("/Signature")
+    if signature_hex is None:
+        return False, None, None, None, None
+    name = pdf_reader.metadata.get("/Name")
+    date = pdf_reader.metadata.get("/Date")
+    signature = bytes.fromhex(signature_hex)
+    try:
+        public_key.verify(
+            signature,
+            pdf_content,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+        ic(f"✅")
+        return True, name, date, len(signature), public_key.key_size
+    except Exception as ex:
+        ic(f"❌ : {ex}")
+        return False, None, None, None, None
