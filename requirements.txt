@@ -2,3 +2,4 @@ icecream
 PySide6
 cryptography
 PyPDF2
+wmi

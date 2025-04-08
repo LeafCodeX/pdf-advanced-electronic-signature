@@ -2,7 +2,7 @@ from pathlib import Path
 
 AUTHORS: str = "Authors: Marcin Bajkowski 193696, Stanisław Lemański 193333"
 
-PROGRAM_NAME: str = "PAdES v1.0.0"
+PROGRAM_NAME: str = "PAdES v1.0.1"
 
 RSA_KEY_LENGTH: int = 4096
 BLOCK_SIZE: int = 16

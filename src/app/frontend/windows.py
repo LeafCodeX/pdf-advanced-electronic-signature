@@ -379,8 +379,13 @@ class SecurityWindow(BaseWindow):
     def handle_encrypt_and_decrypt_private_key(self):
         sender = self.sender()
         action = "encrypt" if sender.objectName() == "encrypt_key_button" else "decrypt"
+
         pin, input_window = QInputDialog.getText(self, config.PROGRAM_NAME, "Enter code (PIN):", QLineEdit.EchoMode.Password)
+
         if input_window and pin:
+            if not (pin.isdigit() and len(pin) == 4):
+                self.message_display.setText("❌ PIN must consist of exactly 4 digits!")
+                return
             selected_items = self.sec_key_list_widget.selectedItems()
             if selected_items:
                 selected_key_path = selected_items[0].data(Qt.ItemDataRole.UserRole)
