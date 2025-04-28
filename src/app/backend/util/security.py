@@ -1,3 +1,7 @@
+"""
+@file security.py
+@brief Module for encrypting, decrypting RSA private keys, signing PDF documents, and verifying PDF signatures.
+"""
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
 from cryptography.hazmat.primitives.ciphers import Cipher, modes, algorithms
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -12,6 +16,13 @@ import os
 
 
 def encrypt_private_key(private_key_path: str, pin: str) -> str:
+    """
+    @brief Encrypts a private RSA key using AES encryption with a PIN-derived key.
+
+    @param private_key_path Path to the private key file to be encrypted.
+    @param pin User-provided PIN used to derive the AES encryption key.
+    @return str Path to the newly created encrypted private key file, or an empty string if encryption fails.
+    """
     try:
         with open(private_key_path, 'rb') as f:
             private_key_data = f.read()
@@ -33,6 +44,13 @@ def encrypt_private_key(private_key_path: str, pin: str) -> str:
 
 
 def decrypt_private_key(encrypted_key_path: str, pin: str) -> str:
+    """
+    @brief Decrypts an AES-encrypted private RSA key using a PIN-derived key.
+
+    @param encrypted_key_path Path to the encrypted private key file.
+    @param pin User-provided PIN used to derive the AES decryption key.
+    @return str Path to the decrypted private key file, or an empty string if decryption fails.
+    """
     try:
         with open(encrypted_key_path, 'rb') as f:
             encrypted_private_key_data = f.read()
@@ -57,6 +75,14 @@ def decrypt_private_key(encrypted_key_path: str, pin: str) -> str:
 
 
 def sign_pdf(pdf_path: str, private_key_path: str, name: str) -> str:
+    """
+    @brief Signs a PDF file by creating a digital signature with the provided private RSA key.
+
+    @param pdf_path Path to the PDF file to be signed.
+    @param private_key_path Path to the private key used for signing.
+    @param name Name of the signer to embed into the PDF metadata.
+    @return str Path to the signed PDF file.
+    """
     pdf_reader = PdfReader(pdf_path)
     pdf_writer = PdfWriter()
     for page in pdf_reader.pages:
@@ -84,6 +110,13 @@ def sign_pdf(pdf_path: str, private_key_path: str, name: str) -> str:
 
 
 def verify_pdf(pdf_path: str, public_key_path: str) -> [bool, str, str, int, int]:
+    """
+    @brief Verifies the digital signature of a signed PDF file using the provided public RSA key.
+
+    @param pdf_path Path to the signed PDF file to be verified.
+    @param public_key_path Path to the public key used for verification.
+    @return list [bool, str, str, int, int] Verification result (True/False), signer name, signature date, signature length in bytes, and public key size.
+    """
     pdf_reader = PdfReader(pdf_path)
     pdf_content = b"".join([page.extract_text().encode() for page in pdf_reader.pages])
     with open(public_key_path, "rb") as key_file:
