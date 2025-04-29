@@ -1,3 +1,7 @@
+"""
+@file keygen.py
+@brief Module responsible for generating RSA key pairs, saving them to a device, and managing key files.
+"""
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 from icecream import ic
@@ -7,6 +11,11 @@ import os
 
 
 def generate_rsa_keys() -> tuple[str, str]:
+    """
+    @brief Generates a new RSA key pair.
+
+    @return tuple[str, str] A tuple containing the private key and public key as PEM-encoded strings.
+    """
     key = rsa.generate_private_key(
         public_exponent=65537,
         key_size=config.RSA_KEY_LENGTH,
@@ -24,6 +33,12 @@ def generate_rsa_keys() -> tuple[str, str]:
 
 
 def generate_and_save_keys(device_path: str) -> tuple[str, str]:
+    """
+    @brief Generates a new RSA key pair and saves it to a new folder on the given device path.
+
+    @param device_path Path to the flash drive where the keys should be saved.
+    @return tuple[str, str] Paths to the saved private and public key files.
+    """
     private_key, public_key = generate_rsa_keys()
 
     current_time: datetime = datetime.now()
@@ -47,6 +62,12 @@ def generate_and_save_keys(device_path: str) -> tuple[str, str]:
 
 
 def count_keys(directory: str) -> tuple[int, int, list[str], list[str]]:
+    """
+     @brief Counts the number of private and public keys found in the specified directory.
+
+     @param directory Path to the directory where the search for keys should be performed.
+     @return tuple[int, int, list[str], list[str]] Number of private keys, number of public keys, list of private key paths, list of public key paths.
+     """
     private_key_count: int = 0
     public_key_count: int = 0
     private_key_paths: list[str] = []
@@ -67,6 +88,11 @@ def count_keys(directory: str) -> tuple[int, int, list[str], list[str]]:
 
 
 def remove_unwanted_files(directory: str) -> None:
+    """
+     @brief Removes unwanted system files and temporary files from the specified directory.
+
+     @param directory Path to the directory where unwanted files should be deleted.
+     """
     for root, _, files in os.walk(directory):
         for file in files:
             file_path = os.path.join(root, file)

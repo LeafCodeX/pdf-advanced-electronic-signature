@@ -1,9 +1,19 @@
+"""
+@file util.py
+@brief Utility module for detecting connected USB flash drives across different operating systems.
+"""
 import sys
 import re
 import subprocess
 
 
 def get_flash_drive_info(force_update: bool = False) -> list[dict[str, str]]:
+    """
+    @brief Retrieves information about connected USB flash drives.
+
+    @param force_update Unused parameter, reserved for future functionality.
+    @return list[dict[str, str]] A list of dictionaries containing device paths, device names, and serial numbers for each detected flash drive.
+    """
     flash_drives: list[dict[str, str]] = []
 
     if sys.platform == "win32":

@@ -8,7 +8,18 @@ import os
 
 
 class BaseWindow(QMainWindow):
+    """
+    @class BaseWindow
+    @brief Base class for creating application windows with common layout and styling functionalities.
+    """
     def __init__(self, window_size: tuple[int, int], title: str, stylesheet_path: str) -> None:
+        """
+        @brief Initializes the base window with a specific size, title, and stylesheet.
+
+        @param window_size Tuple specifying the width and height of the window.
+        @param title Title of the window.
+        @param stylesheet_path Path to the stylesheet file used for window styling.
+        """
         super().__init__()
         self.resize(window_size[0], window_size[1])
         self.setWindowTitle(title)
@@ -21,8 +32,18 @@ class BaseWindow(QMainWindow):
         self.setCentralWidget(self.window_widget)
         self.load_stylesheet(self.stylesheet_path)
 
+
     @staticmethod
     def add_label(text: str, identification_name: str, alignment: Qt.AlignmentFlag, layout: QLayout) -> QLabel:
+        """
+        @brief Adds a label to the given layout.
+
+        @param text Text to display on the label.
+        @param identification_name Object name used for identifying the label widget.
+        @param alignment Text alignment inside the label.
+        @param layout Layout where the label will be added.
+        @return QLabel Created QLabel widget.
+        """
         label = QLabel(text)
         label.setObjectName(identification_name)
         label.setAlignment(alignment)
@@ -31,6 +52,13 @@ class BaseWindow(QMainWindow):
 
     @staticmethod
     def add_message_display(identification_name: str, layout: QLayout) -> QTextEdit:
+        """
+        @brief Adds a read-only text display widget to the given layout.
+
+        @param identification_name Object name used for identifying the text edit widget.
+        @param layout Layout where the text edit widget will be added.
+        @return QTextEdit Created QTextEdit widget.
+        """
         text_edit = QTextEdit()
         text_edit.setObjectName(identification_name)
         text_edit.setReadOnly(True)
@@ -39,6 +67,14 @@ class BaseWindow(QMainWindow):
 
     @staticmethod
     def add_list_widget(identification_name: str, selection_mode: QListWidget.SelectionMode, layout: QLayout, ) -> QListWidget:
+        """
+        @brief Adds a list widget to the given layout.
+
+        @param identification_name Object name used for identifying the list widget.
+        @param selection_mode Selection mode that defines how items can be selected (e.g., single or multiple).
+        @param layout Layout where the list widget will be added.
+        @return QListWidget Created QListWidget widget.
+        """
         list_widget = QListWidget()
         list_widget.setObjectName(identification_name)
         list_widget.setSelectionMode(selection_mode)
@@ -46,6 +82,15 @@ class BaseWindow(QMainWindow):
         return list_widget
 
     def add_function_button(self, name: str, identification_name: str, function: callable, layout: QLayout) -> QPushButton:
+        """
+        @brief Adds a function button to the given layout and connects it to the specified function.
+
+        @param name Text to be displayed on the button.
+        @param identification_name Object name used for identifying the button widget.
+        @param function Function to be called when the button is clicked.
+        @param layout Layout where the button will be added.
+        @return QPushButton Created QPushButton widget.
+        """
         button = QPushButton(name)
         button.setObjectName(identification_name)
         button.clicked.connect(function)
@@ -54,6 +99,15 @@ class BaseWindow(QMainWindow):
         return button
 
     def add_window_button(self, name: str, identification_name: str, main_window: QMainWindow, layout: QLayout) -> QPushButton:
+        """
+        @brief Adds a button that closes the current window and opens the specified main window.
+
+        @param name Text to be displayed on the button.
+        @param identification_name Object name used for identifying the button widget.
+        @param main_window Window to be shown after closing the current window.
+        @param layout Layout where the button will be added.
+        @return QPushButton Created QPushButton widget.
+        """
         button = QPushButton(name)
         button.setObjectName(identification_name)
         button.clicked.connect(self.close)
@@ -63,6 +117,11 @@ class BaseWindow(QMainWindow):
         return button
 
     def update_button_states(self, state: str) -> None:
+        """
+        @brief Updates the enabled/disabled states of buttons based on the given application state.
+
+        @param state Key used to retrieve the corresponding button states from the configuration.
+        """
         button_states: dict[str, bool] = config.BUTTON_STATES.get(state, config.BUTTON_STATES["default"])
         for button_name, enabled in button_states.items():
             button = self.findChild(QPushButton, button_name)
@@ -70,6 +129,11 @@ class BaseWindow(QMainWindow):
                 button.setEnabled(enabled)
 
     def load_stylesheet(self, stylesheet_path: str) -> None:
+        """
+        @brief Loads and applies a stylesheet from a specified file path.
+
+        @param stylesheet_path Path to the stylesheet file.
+        """
         try:
             with open(stylesheet_path, "r") as file:
                 self.setStyleSheet(file.read())
@@ -78,7 +142,14 @@ class BaseWindow(QMainWindow):
 
 
 class MainWindow(BaseWindow):
+    """
+    @class MainWindow
+    @brief Main application window that allows the user to navigate to key generation or document signing/verification functionalities.
+    """
     def __init__(self) -> None:
+        """
+        @brief Initializes the main window, setting up buttons and navigation to key generation and signing functionalities.
+        """
         super().__init__(config.DEFAULT_WINDOW_SIZE, config.PROGRAM_NAME, config.DEFAULT_STYLESHEET_PATH)
         self.flash_drives: list[dict[str, str]] = []
 
@@ -96,6 +167,13 @@ class MainWindow(BaseWindow):
         self.add_label(config.AUTHORS, "footer", Qt.AlignmentFlag.AlignCenter, self.window_layout)
 
     def eventFilter(self, obj, event) -> bool:
+        """
+        @brief Handles button hover and click events, updating connected flash drives information and button states.
+
+        @param obj The object generating the event.
+        @param event The event being processed.
+        @return bool True if the event is fully handled, otherwise passes the event to the base class.
+        """
         message_display = self.findChild(QTextEdit, "message_display")
         if event.type() == QEvent.Type.Enter and obj.objectName() in config.BUTTONS:
             self.flash_drives = util.get_flash_drive_info()
@@ -119,7 +197,17 @@ class MainWindow(BaseWindow):
 
 
 class GeneratorWindow(BaseWindow):
+    """
+    @class GeneratorWindow
+    @brief Window responsible for generating RSA key pairs and saving them to a selected flash drive.
+    """
     def __init__(self, main_window: MainWindow, flash_drives: list[dict[str, str]]) -> None:
+        """
+        @brief Initializes the Generator Window, setting up the UI components and connecting events.
+
+        @param main_window Reference to the main application window for navigation purposes.
+        @param flash_drives List of detected flash drives available for key generation.
+        """
         super().__init__(config.DEFAULT_WINDOW_SIZE, config.PROGRAM_NAME, config.DEFAULT_STYLESHEET_PATH)
         self.main_window = main_window
         self.flash_drives: list[dict[str, str]] = flash_drives
@@ -139,6 +227,9 @@ class GeneratorWindow(BaseWindow):
         self.add_label(config.AUTHORS, "footer", Qt.AlignmentFlag.AlignCenter, self.window_layout)
 
     def update_usb_list(self) -> None:
+        """
+        @brief Updates the list widget displaying available flash drives, showing information about existing keys.
+        """
         current_flash_drives = util.get_flash_drive_info()
         new_flash_drive_info = []
 
@@ -169,10 +260,22 @@ class GeneratorWindow(BaseWindow):
             self.gen_usb_list_widget.addItem(list_item)
 
     def showEvent(self, event) -> None:
+        """
+        @brief Updates the flash drive list when the window becomes visible.
+
+        @param event Show event triggered when the window is shown.
+        """
         self.update_usb_list()
         super().showEvent(event)
 
     def eventFilter(self, obj, event) -> bool:
+        """
+        @brief Handles button hover events to refresh flash drive list and update button states.
+
+        @param obj The object generating the event.
+        @param event The event being processed.
+        @return bool True if the event is fully handled, otherwise passes the event to the base class.
+        """
         message_display = self.findChild(QTextEdit, "message_display")
         if event.type() == QEvent.Type.Enter and obj.objectName() in config.BUTTONS:
             self.flash_drives = util.get_flash_drive_info()
@@ -189,6 +292,11 @@ class GeneratorWindow(BaseWindow):
         return super().eventFilter(obj, event)
 
     def closeEvent(self, event) -> None:
+        """
+        @brief Resets the selection and updates the main window flash drive state when the Generator Window is closed.
+
+        @param event Close event triggered when the window is closed.
+        """
         self.gen_usb_list_widget.clearSelection()
         self.flash_drives = util.get_flash_drive_info()
         self.main_window.flash_drives = self.flash_drives
@@ -203,11 +311,17 @@ class GeneratorWindow(BaseWindow):
         super().closeEvent(event)
 
     def on_usb_selection_changed(self) -> None:
+        """
+        @brief Handles the event when a different flash drive is selected from the list, updating the selected drive.
+        """
         selected_item = self.gen_usb_list_widget.currentItem()
         if selected_item and selected_item.data(Qt.ItemDataRole.UserRole):
             self.selected_drive = selected_item.data(Qt.ItemDataRole.UserRole)
 
     def generate_and_save_keys(self) -> None:
+        """
+        @brief Generates a new RSA key pair and saves the private and public keys to the selected flash drive.
+        """
         message_display = self.findChild(QTextEdit, "message_display")
         if not self.selected_drive:
             message_display.setText("❌ Please select a flash drive from the list!")
@@ -224,7 +338,17 @@ class GeneratorWindow(BaseWindow):
 
 
 class SecurityWindow(BaseWindow):
+    """
+    @class SecurityWindow
+    @brief Window responsible for encrypting, decrypting, signing, and verifying PDF files using RSA keys stored on a flash drive.
+    """
     def __init__(self, main_window: MainWindow, flash_drives: list[dict[str, str]]) -> None:
+        """
+        @brief Initializes the Security Window, setting up the UI components for encryption, decryption, signing, and verifying operations.
+
+        @param main_window Reference to the main application window for navigation purposes.
+        @param flash_drives List of detected flash drives available for cryptographic operations.
+        """
         super().__init__(config.LARGE_WINDOW_SIZE, config.PROGRAM_NAME, config.DEFAULT_STYLESHEET_PATH)
         self.main_window = main_window
         self.flash_drives: list[dict[str, str]] = flash_drives
@@ -261,6 +385,9 @@ class SecurityWindow(BaseWindow):
         self.add_label(config.AUTHORS, "footer", Qt.AlignmentFlag.AlignCenter, self.window_layout)
 
     def update_usb_list(self) -> None:
+        """
+        @brief Updates the list of connected flash drives and their available RSA keys.
+        """
         current_flash_drives = util.get_flash_drive_info()
         new_flash_drive_info = []
 
@@ -292,6 +419,11 @@ class SecurityWindow(BaseWindow):
             self.sec_usb_list_widget.addItem(list_item)
 
     def showEvent(self, event) -> None:
+        """
+        @brief Handles window show events by refreshing the flash drive and key lists.
+
+        @param event Event triggered when the window is shown.
+        """
         self.flash_drives = util.get_flash_drive_info()
         self.update_button_states("connected" if self.flash_drives else "default")
         self.update_usb_list()
@@ -301,6 +433,13 @@ class SecurityWindow(BaseWindow):
         super().showEvent(event)
 
     def eventFilter(self, obj, event) -> bool:
+        """
+        @brief Handles button hover events, updating flash drive lists and button states based on connection status.
+
+        @param obj The object generating the event.
+        @param event The event being processed.
+        @return bool True if the event is fully handled, otherwise passes the event to the base class.
+        """
         message_display = self.findChild(QTextEdit, "message_display")
         if event.type() == QEvent.Type.Enter and obj.objectName() in config.BUTTONS:
             self.flash_drives = util.get_flash_drive_info()
@@ -316,6 +455,11 @@ class SecurityWindow(BaseWindow):
         return super().eventFilter(obj, event)
 
     def closeEvent(self, event) -> None:
+        """
+        @brief Handles window closing events, clearing selections and resetting the main window state.
+
+        @param event Event triggered when the window is closed.
+        """
         self.sec_usb_list_widget.clearSelection()
         self.flash_drives = util.get_flash_drive_info()
         self.main_window.flash_drives = self.flash_drives
@@ -334,12 +478,20 @@ class SecurityWindow(BaseWindow):
         super().closeEvent(event)
 
     def on_usb_selection_changed(self) -> None:
+        """
+        @brief Updates the selected flash drive when a different device is selected from the list.
+        """
         selected_item = self.sec_usb_list_widget.currentItem()
         if selected_item and selected_item.data(Qt.ItemDataRole.UserRole):
             self.selected_drive = selected_item.data(Qt.ItemDataRole.UserRole)
             self.load_keys(self.selected_drive["devicePath"] if self.selected_drive else "")
 
     def load_keys(self, device_path: str) -> None:
+        """
+        @brief Loads RSA keys from the selected flash drive and displays them in the key list widget.
+
+        @param device_path Path to the selected flash drive.
+        """
         message_display = self.findChild(QTextEdit, "message_display")
         self.sec_key_list_widget.clear()
 
@@ -364,6 +516,9 @@ class SecurityWindow(BaseWindow):
                 self.sec_key_list_widget.addItem(item)
 
     def on_key_selection_changed(self) -> None:
+        """
+        @brief Updates the selected key when a different key is selected from the key list.
+        """
         selected_item = self.sec_key_list_widget.currentItem()
         if selected_item and selected_item.data(Qt.ItemDataRole.UserRole):
             self.selected_key = selected_item.data(Qt.ItemDataRole.UserRole)
@@ -377,6 +532,9 @@ class SecurityWindow(BaseWindow):
                 self.update_button_states("-public-key")
 
     def handle_encrypt_and_decrypt_private_key(self):
+        """
+        @brief Encrypts or decrypts the selected private RSA key based on the user's PIN input and action selected.
+        """
         sender = self.sender()
         action = "encrypt" if sender.objectName() == "encrypt_key_button" else "decrypt"
 
@@ -409,6 +567,9 @@ class SecurityWindow(BaseWindow):
             self.message_display.setText("❌ Failed encrypting/decrypting the key!\nPlease enter a PIN and try again...")
 
     def select_pdf_to_sign(self) -> None:
+        """
+        @brief Opens a file dialog to select a PDF file for signing.
+        """
         pdf_path, _ = QFileDialog.getOpenFileName(self, "Select PDF to Sign", "", "PDF Files (*.pdf)")
         if pdf_path:
             self.selected_pdf_path_to_sign = pdf_path
@@ -417,6 +578,9 @@ class SecurityWindow(BaseWindow):
             self.message_display.setText("❌ No PDF selected for signing!\nPlease select a PDF file and try again...")
 
     def select_pdf_to_verify(self) -> None:
+        """
+        @brief Signs the selected PDF file using the selected private key and an optional signer name.
+        """
         pdf_path, _ = QFileDialog.getOpenFileName(self, "Select PDF to Verify", "", "PDF Files (*.pdf)")
         if pdf_path:
             self.selected_pdf_path_to_verify = pdf_path
@@ -425,6 +589,9 @@ class SecurityWindow(BaseWindow):
             self.message_display.setText("❌ No PDF selected for verification!\nPlease select a PDF file and try again...")
 
     def sign_selected_pdf(self) -> None:
+        """
+        @brief Signs the selected PDF file using the selected private key and an optional signer name.
+        """
         if not self.selected_pdf_path_to_sign:
             self.message_display.setText("❌ No PDF selected for signing!\nPlease select a PDF file and try again...")
             return
@@ -444,6 +611,11 @@ class SecurityWindow(BaseWindow):
             self.message_display.setText("❌ PDF signing failed! Please check the inputs and try again.")
 
     def verify_selected_pdf(self) -> None:
+        """
+        @brief Verifies the signature of the selected PDF file using the selected public key.
+
+        Displays signer information and signature validation result.
+        """
         if not self.selected_pdf_path_to_verify:
             self.message_display.setText("❌ No PDF selected for verification!\nPlease select a PDF file and try again...")
             return
